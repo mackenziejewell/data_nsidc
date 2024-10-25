@@ -87,10 +87,10 @@ def open_local_file(dates,
     """Import NSIDC Polar Pathfinder (sea ice drift NSIDC-0116, doi:10.5067/INAWUWO7QH7B) lats, lons, u, v cropped to within given lat/lon range.
 
 INPUT:
-- dates: single datetime object, or list of desired datetimes
+- dates: single datetime object, or list, array of desired datetimes
 - main_path: directory where PPD files are locally stored.
 - filenametype: naming convention for PPD files (default: 'icemotion_daily_nh_25km_{}0101_{}1231_v4.1.nc' where {} will be replaced with year of dt_obj)
-- include_units: bool, whether or not to include return units
+- include_units: bool, whether or not to return data with units
 
 OUTPUT:
 Dictionary "data" containing:
@@ -160,9 +160,16 @@ Latest recorded update:
     data['proj'] = grab_projection(ds) # cartopy projection
 
     # projected drift components and error variance
-    data['u'] = ds.u.values
-    data['v'] = ds.v.values
-    data['error'] = ds.icemotion_error_estimate.values
+    # remove time info if only one date
+    if len(dates) == 1:
+        print(True)
+        data['u'] = ds.u.values[0,:,:]
+        data['v'] = ds.v.values[0,:,:]
+        data['error'] = ds.icemotion_error_estimate.values[0,:,:]
+    else:
+        data['u'] = ds.u.values
+        data['v'] = ds.v.values
+        data['error'] = ds.icemotion_error_estimate.values
     
     # projected coords
     data['xx'], data['yy'] = np.meshgrid(ds.x.values, ds.y.values)

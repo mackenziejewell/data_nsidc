@@ -1,13 +1,14 @@
 # data_NSIDC
-Scripts for downloading, opening, read data files from the National Snow and Ice Data Center (NSIDC)
+Scripts for opening, read data files from the National Snow and Ice Data Center (NSIDC)
 
 
 # To build matching environment:
 Navigate to folder in terminal and run:
-
 conda env create --file=environment.yml
 
-This builds conda environment named data_NSIDC
+To update environment file after modifying packages:
+conda env export > environment.yml
+
 
 # icedrift.py
 
