@@ -27,6 +27,5 @@ https://nsidc.org/data/nsidc-0116/versions/4#anchor-data-access-tools
 Various data products for ICESat-2 data hosted on NSIDC, including:
 
 ICESat-2 L4 Monthly Gridded Sea Ice Thickness, Version 3
-Data set id:
-IS2SITMOGR4
+Data set id: IS2SITMOGR4
 DOI: 10.5067/ZCSU8Y5U1BQW

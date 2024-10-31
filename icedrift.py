@@ -1,3 +1,6 @@
+
+# Functions for importing and processing NSIDC Polar Pathfinder sea ice drift data (NSIDC-0116, doi: 10.5067/INAWUWO7QH7B)
+
 # DEPENDENCIES:
 import xarray as xr
 import numpy as np
@@ -162,7 +165,6 @@ Latest recorded update:
     # projected drift components and error variance
     # remove time info if only one date
     if len(dates) == 1:
-        print(True)
         data['u'] = ds.u.values[0,:,:]
         data['v'] = ds.v.values[0,:,:]
         data['error'] = ds.icemotion_error_estimate.values[0,:,:]
