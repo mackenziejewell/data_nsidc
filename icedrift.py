@@ -110,7 +110,7 @@ Dictionary "data" containing:
 - ds: xarray data frame containing data from year of date
 
 Latest recorded update:
-10-25-2024
+11-15-2024
     """
     
     # determine years of data to import
@@ -175,10 +175,10 @@ Latest recorded update:
     
     # projected coords
     data['xx'], data['yy'] = np.meshgrid(ds.x.values, ds.y.values)
-    
-    # lat/lon coords
-    data['lat'] = ds.latitude.values[:,:,0]
-    data['lon'] = ds.longitude.values[:,:,0]
+
+    # lat/lon coords(strip time dimension)
+    data['lat'] = ds.latitude.sel(time = ds.time[0]).values
+    data['lon'] = ds.longitude.sel(time = ds.time[0]).values
     data['lon'][data['lon']<0]+=360
     
     # convert projected coordinates to east, north velocities
