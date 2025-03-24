@@ -85,6 +85,7 @@ Latest recorded update:
 def open_local_file(dates,
                     main_path = '/Volumes/Jewell_EasyStore/NSIDC-0116_PPdrift/', 
                     filenametype = 'icemotion_daily_nh_25km_{}0101_{}1231_v4.1.nc', 
+                    crop = [0,None,0,None],
                     include_units = False):
 
     """Import NSIDC Polar Pathfinder (sea ice drift NSIDC-0116, doi:10.5067/INAWUWO7QH7B) lats, lons, u, v cropped to within given lat/lon range.
@@ -93,6 +94,7 @@ INPUT:
 - dates: single datetime object, or list, array of desired datetimes
 - main_path: directory where PPD files are locally stored.
 - filenametype: naming convention for PPD files (default: 'icemotion_daily_nh_25km_{}0101_{}1231_v4.1.nc' where {} will be replaced with year of dt_obj)
+- crop: indices along dim1 ("i"), dim2 ("j") to crop to area of interest [ai, bi, aj, bj]
 - include_units: bool, whether or not to return data with units
 
 OUTPUT:
@@ -110,7 +112,7 @@ Dictionary "data" containing:
 - ds: xarray data frame containing data from year of date
 
 Latest recorded update:
-11-15-2024
+03-19-2025
     """
     
     # determine years of data to import
@@ -188,6 +190,27 @@ Latest recorded update:
     data['e'] = e
     data['n'] = n
         
+    # crop data values here
+    ai, bi, aj, bj = crop[0], crop[1], crop[2], crop[3]
+
+    if len(data['u'].shape) == 3:
+        data['u'] = data['u'][:,ai:bi, aj:bj]
+        data['v'] = data['v'][:,ai:bi, aj:bj]
+        data['e'] = data['e'][:,ai:bi, aj:bj]
+        data['n'] = data['n'][:,ai:bi, aj:bj]
+        data['error'] = data['error'][:,ai:bi, aj:bj]
+    else:
+        data['u'] = data['u'][ai:bi, aj:bj]
+        data['v'] = data['v'][ai:bi, aj:bj]
+        data['e'] = data['e'][ai:bi, aj:bj]
+        data['n'] = data['n'][ai:bi, aj:bj]
+        data['error'] = data['error'][ai:bi, aj:bj]
+    data['xx'] = data['xx'][ai:bi, aj:bj]
+    data['yy'] = data['yy'][ai:bi, aj:bj]
+    data['lat'] = data['lat'][ai:bi, aj:bj]
+    data['lon'] = data['lon'][ai:bi, aj:bj]
+
+
     if include_units:
         data['u'] = data['u'] * units(ds['u'].units)
         data['v'] = data['v'] * units(ds['v'].units)
