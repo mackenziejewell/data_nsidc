@@ -9,6 +9,8 @@ import cartopy
 import cartopy.crs as ccrs
 from datetime import datetime, timedelta
 from metpy.units import units
+import pandas as pd
+import os
 
 
 # FUNCTIONS:
@@ -80,7 +82,46 @@ Latest recorded update:
     return projection
 
 
+def generate_filename(year, main_path, filenametype):
+        """Generate filename for NSIDC Polar Pathfinder data based on year of data requested.
+        
+        INPUT:
+        - year: year of data to import
+        - main_path: directory where PPD files are locally stored
+        - filenametype: naming convention for PPD files (as in 'icemotion_daily_nh_25km_{}0101_{}1231_v4.1.nc' where {} will be replaced with year of date)
+        
+        OUTPUT:
+        - file: string with path to file corresponding to year of data requested
+        """
+        
+        # incomplete year of data in 1978
+        if year == 1978: 
+            file = main_path + 'icemotion_daily_nh_25km_19781101_19781231_v4.1.nc'
+        else:
+            file = main_path + filenametype.format(year,year)
+        
+        return file
 
+def identify_existing_files_dates(main_path):
+
+    """Identify which files exist in the main directory and which dates they include.
+    """
+    
+    # determine which files exist in the main directory
+    existing_files = [file for file in os.listdir(main_path) if file.endswith('.nc')]
+    if len(existing_files) == 0:
+        print('No files found in the specified directory. Please check the path.')
+        
+    # determine which dates these files include
+    existing_dates = np.array([], dtype=np.datetime64)
+
+    for file in existing_files:
+        datei = datetime.strptime(file.split('_')[4], '%Y%m%d') 
+        datef = datetime.strptime(file.split('_')[5], '%Y%m%d') 
+        existing_dates = np.append(existing_dates, pd.date_range(datei, datef))
+        
+    return existing_files, pd.to_datetime(existing_dates)
+        
 
 def open_local_file(dates,
                     main_path = '/Volumes/Jewell_EasyStore/NSIDC-0116_PPdrift/', 
@@ -89,6 +130,7 @@ def open_local_file(dates,
                     include_units = False):
 
     """Import NSIDC Polar Pathfinder (sea ice drift NSIDC-0116, doi:10.5067/INAWUWO7QH7B) lats, lons, u, v cropped to within given lat/lon range.
+    Note that any desired dates not found in local directory will be ignored, but listed in "missing_dates" key.
 
 INPUT:
 - dates: single datetime object, or list, array of desired datetimes
@@ -110,35 +152,47 @@ Dictionary "data" containing:
 - error: M x N grid of estimated error variance (ice motion error measure)
 - proj: cartopy projection from PP drift data projection info
 - ds: xarray data frame containing data from year of date
+- missing_dates: list of dates that were not found in the local directory
 
 Latest recorded update:
 03-19-2025
     """
+
+    # determine which files exist in the main directory
+    existing_files, existing_dates = identify_existing_files_dates(main_path)
+    if len(existing_files) == 0:
+        print('No files found in the specified directory. Please check the path.')
+
+    # strip time info from dates
+    dates_no_hours = np.array([date-timedelta(hours=date.hour) for date in dates])
+
+    # if we have just one date, add it to a list
+    if isinstance(dates_no_hours, datetime):
+        dates_no_hours = [dates_no_hours]
     
+    # determine if any dates are missing from local files
+    include_dates = []
+    missing_dates = []
+    for date in dates_no_hours:
+        if date not in existing_dates:
+            missing_dates.append(date)
+        else:
+            include_dates.append(date)
+
+    include_dates = list(set(include_dates))
+    missing_dates = list(set(missing_dates))
+
+    # print(include_dates)
     # determine years of data to import
     #----------------------------------
-    years = [] # list of years of data to import
-
-    # if we have just one date
-    if isinstance(dates, datetime):
-        dates = [dates]
-    for date in dates:
-        years.append(date.year)
-
-    years = list(set(years))
+    years = list(set([date.year for date in include_dates]))
 
     # open files
     #-----------
     # just one:
     if len(years) == 1:
-
         # open file corresponding to date's year
-        if years[0] == 1978: 
-            # incomplete year of data in 1978
-            file = main_path + 'icemotion_daily_nh_25km_19781101_19781231_v4.1.nc'
-        else:
-            file = main_path + filenametype.format(years[0],years[0])
-
+        file = generate_filename(years[0], main_path, filenametype)
         ds = xr.open_dataset(file)
         ds.close()
 
@@ -147,17 +201,13 @@ Latest recorded update:
         # open file corresponding to date's year
         files = []
         for year in years:
-            if year == 1978:
-                files.append(main_path + 'icemotion_daily_nh_25km_19781101_19781231_v4.1.nc')
-            else:
-                files.append(main_path + filenametype.format(year,year))
-
+            files.append(generate_filename(year, main_path, filenametype))
         ds = xr.open_mfdataset(files)
         ds.close()
 
     # convert from CFtime to standard calendar
     # and grab dates provided
-    ds = ds.convert_calendar('standard').sel(time=dates)
+    ds = ds.convert_calendar('standard').sel(time=include_dates)
 
     # save all to dict
     data = {}
@@ -166,7 +216,7 @@ Latest recorded update:
 
     # projected drift components and error variance
     # remove time info if only one date
-    if len(dates) == 1:
+    if len(include_dates) == 1:
         data['u'] = ds.u.values[0,:,:]
         data['v'] = ds.v.values[0,:,:]
         data['error'] = ds.icemotion_error_estimate.values[0,:,:]
@@ -193,6 +243,12 @@ Latest recorded update:
     # crop data values here
     ai, bi, aj, bj = crop[0], crop[1], crop[2], crop[3]
 
+    data['xx'] = data['xx'][ai:bi, aj:bj]
+    data['yy'] = data['yy'][ai:bi, aj:bj]
+    data['lat'] = data['lat'][ai:bi, aj:bj]
+    data['lon'] = data['lon'][ai:bi, aj:bj]
+    data['missing_dates'] = missing_dates
+
     if len(data['u'].shape) == 3:
         data['u'] = data['u'][:,ai:bi, aj:bj]
         data['v'] = data['v'][:,ai:bi, aj:bj]
@@ -205,11 +261,6 @@ Latest recorded update:
         data['e'] = data['e'][ai:bi, aj:bj]
         data['n'] = data['n'][ai:bi, aj:bj]
         data['error'] = data['error'][ai:bi, aj:bj]
-    data['xx'] = data['xx'][ai:bi, aj:bj]
-    data['yy'] = data['yy'][ai:bi, aj:bj]
-    data['lat'] = data['lat'][ai:bi, aj:bj]
-    data['lon'] = data['lon'][ai:bi, aj:bj]
-
 
     if include_units:
         data['u'] = data['u'] * units(ds['u'].units)
@@ -221,5 +272,6 @@ Latest recorded update:
         data['yy'] = data['yy'] * units(ds['y'].units)
         data['lat'] = data['lat'] * units(ds['latitude'].units)
         data['lon'] = data['lon'] * units(ds['longitude'].units)
+
 
     return data
