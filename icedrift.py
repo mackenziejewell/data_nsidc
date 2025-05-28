@@ -164,6 +164,8 @@ Latest recorded update:
         print('No files found in the specified directory. Please check the path.')
 
     # strip time info from dates
+    if isinstance(dates, datetime):
+        dates = [dates]
     dates_no_hours = np.array([date-timedelta(hours=date.hour) for date in dates])
 
     # if we have just one date, add it to a list
