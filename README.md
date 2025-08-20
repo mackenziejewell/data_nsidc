@@ -1,4 +1,4 @@
-# data_NSIDC
+# data_nsidc
 Scripts for opening, read data files from the National Snow and Ice Data Center (NSIDC)
 
 
